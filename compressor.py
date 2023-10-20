@@ -1,7 +1,9 @@
 # TODO: add docstrings
+from image_compression_utilities import compress_file
 import argparse
 from collections import defaultdict
 import glob
+from multiprocessing import Pool
 import os
 import shutil
 from tqdm import tqdm
@@ -70,29 +72,48 @@ def prepare_directories(args):
                     ignore=lambda directory, files: [f for f in files if os.path.isfile(os.path.join(directory, f))])
 
 
-def summarize_input_files(args, all_input_files):
+def summarize_directory_files(args, arg_name, all_files):
     directory_sizes = defaultdict(int)  # directory -> size
     filetype_sizes = defaultdict(lambda: defaultdict(int))  # directory -> file extension -> size
-    for fn in all_input_files:
+    for fn in all_files:
         if os.path.isfile(fn):
             directory_sizes[os.path.dirname(fn)] += os.path.getsize(fn)
             filetype_sizes[os.path.dirname(fn)][os.path.splitext(fn)[-1].lower()] += os.path.getsize(fn)
 
-    print(f"Input files summary ({sizeof_fmt(sum(directory_sizes.values()))} in total):")
+    print(f"{arg_name} summary ({sizeof_fmt(sum(directory_sizes.values()))} in total):")
     for directory, total_filesize in sorted(directory_sizes.items(), key=lambda x: x[1], reverse=True):
-        print(f"input_directory -> {os.path.relpath(directory, args.input_directory)} "
+        print(f"{arg_name} -> {os.path.relpath(directory, getattr(args, arg_name))} "
               f"({sizeof_fmt(total_filesize)} in total):")
         for extension, filesize in sorted(filetype_sizes[directory].items(), key=lambda x: x[1], reverse=True):
             print(f"|  {extension} only: {sizeof_fmt(filesize)}")
     print()
 
 
-def verify_compression_consistency(args):
+def compress_single_file(bundled_imap_args):
+    input_filename, args = bundled_imap_args
+    if not os.path.isfile(input_filename):
+        return  # no work to do
+    temp_filename = os.path.join(args.temp_directory, os.path.relpath(input_filename, args.input_directory))
+    output_filename = os.path.join(args.output_directory, os.path.relpath(input_filename, args.input_directory))
+    compress_file(input_filename, temp_filename, output_filename, args.suffix, args.minimum_image_dimension)
+
+
+def compress_all_files(args, all_input_files):
+    with Pool() as pool:
+        pool_args = [(fn, args) for fn in all_input_files]
+        list(tqdm(pool.imap_unordered(compress_single_file, pool_args), total=len(pool_args),
+                  desc="Compressing input files"))
+
+
+def verify_compression_consistency(args, all_input_files, all_output_files):
     all_temp_files = list(filter(os.path.isfile, glob.glob(os.path.join(args.temp_directory, "**"), recursive=True)))
     if len(all_temp_files):
-        raise ValueError("The temp directory is not empty, but there should be nothing left there!")
+        raise RuntimeError("The temp directory is not empty, but there should be nothing left there!")
 
-    # TODO: verify counts are identical
+    if len(all_input_files) != len(all_output_files):
+        raise RuntimeError("The final count of output files did not match the input!")
+
+    print("Output directory appears consistent with the input.\n")
 
 
 def clean_up_temp_directory(args):
@@ -110,8 +131,14 @@ if __name__ == "__main__":
     # Get list of all input media files and summarize file sizes by directory and file extension
     all_input_files = glob.glob(os.path.join(args.input_directory, "**"), recursive=True)
     print(f"Processing {len(all_input_files)} input files...\n")
-    summarize_input_files(args, all_input_files)
+    summarize_directory_files(args, "input_directory", all_input_files)
+
+    compress_all_files(args, all_input_files)  # actually run the mass compression routines
 
     # verify that all input media files have a match in the output directories and remove lingering temp files
-    verify_compression_consistency(args)
+    all_output_files = glob.glob(os.path.join(args.output_directory, "**"), recursive=True)
+    verify_compression_consistency(args, all_input_files, all_output_files)
     clean_up_temp_directory(args)
+
+    # summarize final output file sizes
+    summarize_directory_files(args, "output_directory", all_output_files)
