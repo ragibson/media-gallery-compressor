@@ -1,5 +1,8 @@
 # TODO: add docstrings
-from image_compression_utilities import compress_file
+# TODO: overall refactor to encapsulate saving functionality, image vs. video shared details, etc.
+import PIL
+
+from image_compression_utilities import compress_image
 import argparse
 from collections import defaultdict
 import glob
@@ -95,7 +98,11 @@ def compress_single_file(bundled_imap_args):
         return  # no work to do
     temp_filename = os.path.join(args.temp_directory, os.path.relpath(input_filename, args.input_directory))
     output_filename = os.path.join(args.output_directory, os.path.relpath(input_filename, args.input_directory))
-    compress_file(input_filename, temp_filename, output_filename, args.suffix, args.minimum_image_dimension)
+
+    try:
+        compress_image(input_filename, temp_filename, output_filename, args.suffix, args.minimum_image_dimension)
+    except PIL.UnidentifiedImageError:
+        shutil.copyfile(input_filename, output_filename)
 
 
 def compress_all_files(args, all_input_files):
