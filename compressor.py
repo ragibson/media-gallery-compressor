@@ -1,8 +1,7 @@
 # TODO: add docstrings
 # TODO: overall refactor to encapsulate saving functionality, image vs. video shared details, etc.
-import PIL
-
 from image_compression_utilities import compress_image
+from video_compression_utilities import compress_video
 import argparse
 from collections import defaultdict
 import glob
@@ -12,6 +11,8 @@ import shutil
 from tqdm import tqdm
 
 COMPRESSED_FILENAME_TAG = "_RG1COMPRESS"
+IMPLEMENTED_IMAGE_FORMATS = {".jpg", ".jpeg", ".png"}
+IMPLEMENTED_VIDEO_FORMATS = {".mp4", ".mov", ".3gp"}
 
 
 def sizeof_fmt(num, suffix="B"):
@@ -92,6 +93,19 @@ def summarize_directory_files(args, arg_name, all_files):
     print()
 
 
+def copy_optimal_compressed_file(input_filename, temp_filename, output_filename, suffix):
+    assert os.path.exists(input_filename) and not os.path.exists(output_filename)
+
+    if os.path.exists(temp_filename) and os.path.getsize(temp_filename) < os.path.getsize(input_filename):
+        # use compressed tag suffix since we edited this file
+        filename, ext = os.path.splitext(output_filename)
+        shutil.move(temp_filename, f"{filename}{suffix}{ext}")  # TODO: retain modify/access times
+    else:
+        if os.path.exists(temp_filename):
+            os.remove(temp_filename)
+        shutil.copyfile(input_filename, output_filename)
+
+
 def compress_single_file(bundled_imap_args):
     input_filename, args = bundled_imap_args
     if not os.path.isfile(input_filename):
@@ -99,9 +113,16 @@ def compress_single_file(bundled_imap_args):
     temp_filename = os.path.join(args.temp_directory, os.path.relpath(input_filename, args.input_directory))
     output_filename = os.path.join(args.output_directory, os.path.relpath(input_filename, args.input_directory))
 
-    try:
-        compress_image(input_filename, temp_filename, output_filename, args.suffix, args.minimum_image_dimension)
-    except PIL.UnidentifiedImageError:
+    claimed_file_extension = os.path.splitext(input_filename)[-1].lower()
+    if claimed_file_extension in IMPLEMENTED_IMAGE_FORMATS:
+        temp_filename, output_filename = compress_image(input_filename, temp_filename, output_filename,
+                                                        args.minimum_image_dimension)
+        copy_optimal_compressed_file(input_filename, temp_filename, output_filename, args.suffix)
+    elif claimed_file_extension in IMPLEMENTED_VIDEO_FORMATS:
+        temp_filename = compress_video(input_filename, temp_filename)
+        copy_optimal_compressed_file(input_filename, temp_filename, output_filename, args.suffix)
+    else:
+        print(f"Unimplemented file extension: {repr(input_filename)}")
         shutil.copyfile(input_filename, output_filename)
 
 
@@ -119,6 +140,8 @@ def verify_compression_consistency(args, all_input_files, all_output_files):
 
     if len(all_input_files) != len(all_output_files):
         raise RuntimeError("The final count of output files did not match the input!")
+
+    # TODO: verify based on file names too
 
     print("Output directory appears consistent with the input.\n")
 
