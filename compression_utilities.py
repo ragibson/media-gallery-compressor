@@ -107,8 +107,7 @@ def compress_video(input_filename, temp_filename, args):
 
     # if ffmpeg failed, make sure that the output temp file does not exist
     if result.returncode:
-        if args.verbose:
-            print(f"ffmpeg appears to have failed, skipping compression of {repr(input_filename)}")
+        print(f"ffmpeg appears to have failed, skipping compression of {repr(input_filename)}")
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
 
