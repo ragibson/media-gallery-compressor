@@ -97,8 +97,11 @@ def copy_optimal_compressed_file(input_filename, temp_filename, output_filename,
     assert os.path.exists(input_filename) and not os.path.exists(output_filename)
 
     if os.path.exists(temp_filename) and os.path.getsize(temp_filename) < os.path.getsize(input_filename):
+        # adopt final chosen file extension from compression method
+        filename, _ = os.path.splitext(output_filename)
+        _, ext = os.path.splitext(temp_filename)
+
         # use compressed tag suffix since we edited this file
-        filename, ext = os.path.splitext(output_filename)
         shutil.move(temp_filename, f"{filename}{suffix}{ext}")  # TODO: retain modify/access times
     else:
         if os.path.exists(temp_filename):
@@ -115,14 +118,13 @@ def compress_single_file(bundled_imap_args):
 
     claimed_file_extension = os.path.splitext(input_filename)[-1].lower()
     if claimed_file_extension in IMPLEMENTED_IMAGE_FORMATS:
-        temp_filename, output_filename = compress_image(input_filename, temp_filename, output_filename,
-                                                        args.minimum_image_dimension)
+        temp_filename = compress_image(input_filename, temp_filename, args.minimum_image_dimension)
         copy_optimal_compressed_file(input_filename, temp_filename, output_filename, args.suffix)
     elif claimed_file_extension in IMPLEMENTED_VIDEO_FORMATS:
         temp_filename = compress_video(input_filename, temp_filename)
         copy_optimal_compressed_file(input_filename, temp_filename, output_filename, args.suffix)
     else:
-        print(f"Unimplemented file extension: {repr(input_filename)}")
+        print(f"Unimplemented file extension: {os.path.relpath(input_filename, args.input_directory)}")
         shutil.copyfile(input_filename, output_filename)
 
 

@@ -14,22 +14,18 @@ def resize_image(im, minimum_image_dimension):
     return im, exif_data
 
 
-def correct_file_extension_if_needed(image_format, temp_filename, output_filename):
+def correct_file_extension_if_needed(image_format, temp_filename):
     temp_extension = os.path.splitext(temp_filename)[-1]
-    assert os.path.splitext(output_filename)[-1] == temp_extension
-
     if image_format == "JPEG" and temp_extension != "jpg":
         temp_filename = f"{os.path.splitext(temp_filename)[0]}.jpg"
-        output_filename = f"{os.path.splitext(output_filename)[0]}.jpg"
     elif image_format == "PNG" and temp_extension != "png":
         temp_filename = f"{os.path.splitext(temp_filename)[0]}.png"
-        output_filename = f"{os.path.splitext(output_filename)[0]}.png"
-    return temp_filename, output_filename
+    return temp_filename
 
 
-def compress_image(input_filename, temp_filename, output_filename, minimum_image_dimension):
+def compress_image(input_filename, temp_filename, minimum_image_dimension):
     im = Image.open(input_filename)
-    temp_filename, output_filename = correct_file_extension_if_needed(im.format, temp_filename, output_filename)
+    temp_filename = correct_file_extension_if_needed(im.format, temp_filename)
 
     if im.format == "JPEG":
         compress_jpeg(im, temp_filename, minimum_image_dimension)
@@ -38,7 +34,7 @@ def compress_image(input_filename, temp_filename, output_filename, minimum_image
     else:
         print(f"Image recognized as {repr(im.format)}, which is neither JPEG nor PNG: {repr(input_filename)}")
 
-    return temp_filename, output_filename
+    return temp_filename
 
 
 def compress_png(im, temp_filename, minimum_image_dimension):
