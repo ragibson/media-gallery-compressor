@@ -5,7 +5,7 @@ This file handles compression of individual image or video files. Notably,
     3) Retain "visually lossless", high-quality media by default:
         PNG    - maximum compression level + extra processing pass to determine optimal encoder settings
         JPEG   - 95 quality + 4:4:4 subsampling + extra processing pass to determine optimal encoder settings
-        videos - H.265 with CRF 24
+        videos - H.265 encoding with CRF 24
 
 The basic idea throughout this script is that we have three versions of the same file at various times:
     Input: the original, unedited photo/video
@@ -51,17 +51,17 @@ def correct_image_extension_if_needed(image_format, temp_filename):
     return temp_filename
 
 
-def compress_image(input_filename, temp_filename, minimum_image_dimension, jpeg_quality, jpeg_subsampling):
+def compress_image(input_filename, temp_filename, args):
     """Run compression on a single input image and save the compressed version to a temporary file."""
     im = Image.open(input_filename)
     temp_filename = correct_image_extension_if_needed(im.format, temp_filename)
 
     if im.format == "JPEG":
-        compress_jpeg(im, temp_filename, minimum_image_dimension, jpeg_quality, jpeg_subsampling)
+        compress_jpeg(im, temp_filename, args.minimum_image_dimension, args.jpeg_quality, args.jpeg_subsampling)
     elif im.format == "PNG":
-        compress_png(im, temp_filename, minimum_image_dimension)
-    else:
-        print(f"Python detected image as {repr(im.format)}, which is unsupported: {repr(input_filename)}")
+        compress_png(im, temp_filename, args.minimum_image_dimension)
+    elif args.verbose:
+        print(f"Pillow detected image as {repr(im.format)}, skipping compression of {repr(input_filename)}")
 
     return temp_filename
 
@@ -84,7 +84,7 @@ def correct_video_extension(temp_filename):
     return f"{os.path.splitext(temp_filename)[0]}.mp4"  # force mp4 container for libx265
 
 
-def compress_video(input_filename, temp_filename, video_codec, video_crf):
+def compress_video(input_filename, temp_filename, args):
     """
     Run ffmpeg to compress an input video into the temp file with default settings of H.265 and CRF 24.
 
@@ -93,21 +93,22 @@ def compress_video(input_filename, temp_filename, video_codec, video_crf):
     temp_filename = correct_video_extension(temp_filename)
 
     suppress_codec_logging = (  # suppress, e.g., "x265 [info]:" lines on stdout unless they're related to errors
-        ["-x265-params", "log-level=error"] if video_codec == "libx265"
-        else ["-x264-params", "log-level=error"] if video_codec == "libx264"
+        ["-x265-params", "log-level=error"] if args.video_codec == "libx265"
+        else ["-x264-params", "log-level=error"] if args.video_codec == "libx264"
         else []
     )
     # this retains most of the available metadata from the input videos
     retain_video_metadata = ["-movflags", "use_metadata_tags", "-map_metadata", "0"]
 
     result = subprocess.run(  # completely deferring to ffmpeg subprocess here
-        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostats", "-i", input_filename, "-vcodec", video_codec]
-        + suppress_codec_logging + ["-crf", video_crf] + retain_video_metadata + [temp_filename]
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostats", "-i", input_filename, "-vcodec", args.video_codec]
+        + suppress_codec_logging + ["-crf", args.video_crf] + retain_video_metadata + [temp_filename]
     )
 
     # if ffmpeg failed, make sure that the output temp file does not exist
     if result.returncode:
-        print(f"ffmpeg appears to have failed on {repr(input_filename)}. Skipping...")
+        if args.verbose:
+            print(f"ffmpeg appears to have failed, skipping compression of {repr(input_filename)}")
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
 

@@ -1,3 +1,4 @@
+"""The main entrypoint of the compression routine."""
 from cli_utilities import parse_arguments, validate_arguments
 from compression_utilities import compress_image, compress_video
 from file_utilities import prepare_directories, summarize_directory_files, lowercase_file_extension
@@ -71,12 +72,9 @@ def compress_single_file(bundled_imap_args):
         return
 
     if claimed_file_extension in IMPLEMENTED_IMAGE_FORMATS:
-        temp_filename = compress_image(input_filename=input_filename, temp_filename=temp_filename,
-                                       minimum_image_dimension=args.minimum_image_dimension,
-                                       jpeg_quality=args.jpeg_quality, jpeg_subsampling=args.jpeg_subsampling)
+        temp_filename = compress_image(input_filename=input_filename, temp_filename=temp_filename, args=args)
     elif claimed_file_extension in IMPLEMENTED_VIDEO_FORMATS:
-        temp_filename = compress_video(input_filename=input_filename, temp_filename=temp_filename,
-                                       video_codec=args.video_codec, video_crf=args.video_crf)
+        temp_filename = compress_video(input_filename=input_filename, temp_filename=temp_filename, args=args)
 
     # copy over the smallest of the original, input file or the compressed, temp file to the output directory
     choose_compression_or_original_file(input_filename=input_filename, temp_filename=temp_filename,
@@ -85,18 +83,44 @@ def compress_single_file(bundled_imap_args):
 
 def compress_all_files(args, all_input_files):
     """Run parallel compression of all input media files."""
-    with Pool(processes=8) as pool:
+    with Pool() as pool:
         pool_args = [(fn, args) for fn in all_input_files]
         list(tqdm(pool.imap_unordered(compress_single_file, pool_args), total=len(pool_args),
                   desc="Compressing input files"))
 
 
 def verify_compression_consistency(args, all_input_files, all_output_files):
-    """Verify that the final output directory is consistent with the original input directory."""
+    """
+    Verify that the final output directory is consistent with the original input directory.
+
+    This includes a few checks between the input and the output:
+        (i) ensure that the number of files match
+        (ii) ensure that all the names of the files match
+        (iii) ensure that the compression rate is never too high
+    """
+
+    def relative_canonical_name(filepath, start, check_suffix=False):
+        relname = os.path.splitext(os.path.relpath(filepath, start))[0]
+        if check_suffix and relname.endswith(args.suffix):
+            relname = relname[:-len(args.suffix)]
+        return relname
+
     if len(all_input_files) != len(all_output_files):
         raise RuntimeError("The final count of output files did not match the input!")
 
-    # TODO: verify based on file names too
+    all_input_files.sort(key=lambda f: relative_canonical_name(f, args.input_directory))
+    all_output_files.sort(key=lambda f: relative_canonical_name(f, args.output_directory, check_suffix=True))
+
+    for idx, (input_filepath, output_filepath) in enumerate(zip(sorted(all_input_files), sorted(all_output_files))):
+        input_name = repr(relative_canonical_name(input_filepath, args.input_directory))
+        output_name = repr(relative_canonical_name(output_filepath, args.output_directory, check_suffix=True))
+        if input_name != output_name:
+            raise RuntimeError(f"In final consistency check, file #{idx} did not match: {input_name} vs. {output_name}")
+
+        compression_rate = 1 - os.stat(output_filepath).st_size / os.stat(input_filepath).st_size
+        if compression_rate > args.maximum_expected_compression:
+            raise RuntimeError(f"Compression appears to have achieved unrealistic compression "
+                               f"rate of {100 * compression_rate:.1f}% on {input_name}")
 
     print("Output directory appears consistent with the input.\n")
 
