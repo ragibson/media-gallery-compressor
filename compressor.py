@@ -31,7 +31,7 @@ def parse_arguments():
     parser.add_argument("-o", "--output-directory", help="Output media directory to create", required=True)
     parser.add_argument("-s", "--suffix", help="Suffix to append to file names when compressed",
                         default=COMPRESSED_FILENAME_TAG)
-    parser.add_argument("-m", "--minimum-image-dimension", default=2160,
+    parser.add_argument("-m", "--minimum-image-dimension", default=2160, type=int,
                         help="Resolution to reduce the smaller image dimension to, if needed")
     parser.add_argument("-t", "--temp-directory", help="Temporary directory to create for intermediate files",
                         default=f"temp{COMPRESSED_FILENAME_TAG}")
