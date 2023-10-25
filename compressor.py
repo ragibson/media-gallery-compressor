@@ -29,6 +29,7 @@ def choose_compression_or_original_file(input_filename, temp_filename, output_fi
         #   two photos with the same name exist, but one has an incorrect file extension
         #   two videos with the same name exist, but with different file extensions
         # otherwise, this is a sign that something has gone wrong, so I'm raising an error here
+        # TODO: handle file name collisions automatically? preprocessing check?
         raise ValueError(f"Encountered a file collision when copying to the output directory: {repr(output_filename)}")
 
     if os.path.exists(temp_filename) and os.path.getsize(temp_filename) < os.path.getsize(input_filename):
@@ -111,7 +112,10 @@ def verify_compression_consistency(args, all_input_files, all_output_files):
     all_input_files.sort(key=lambda f: relative_canonical_name(f, args.input_directory))
     all_output_files.sort(key=lambda f: relative_canonical_name(f, args.output_directory, check_suffix=True))
 
-    for idx, (input_filepath, output_filepath) in enumerate(zip(sorted(all_input_files), sorted(all_output_files))):
+    for idx, (input_filepath, output_filepath) in enumerate(zip(all_input_files, all_output_files)):
+        if not os.path.isfile(input_filepath) and not os.path.isfile(output_filepath):
+            continue
+
         input_name = repr(relative_canonical_name(input_filepath, args.input_directory))
         output_name = repr(relative_canonical_name(output_filepath, args.output_directory, check_suffix=True))
         if input_name != output_name:
