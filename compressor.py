@@ -1,4 +1,5 @@
 """The main entrypoint of the compression routine."""
+from collections import Counter
 from cli_utilities import parse_arguments, validate_arguments
 from compression_utilities import compress_image, compress_video
 from file_utilities import prepare_directories, summarize_directory_files, lowercase_file_extension
@@ -29,7 +30,7 @@ def choose_compression_or_original_file(input_filename, temp_filename, output_fi
         #   two photos with the same name exist, but one has an incorrect file extension
         #   two videos with the same name exist, but with different file extensions
         # otherwise, this is a sign that something has gone wrong, so I'm raising an error here
-        # TODO: handle file name collisions automatically? preprocessing check?
+        # TODO: handle file name collisions automatically?
         raise ValueError(f"Encountered a file collision when copying to the output directory: {repr(output_filename)}")
 
     if os.path.exists(temp_filename) and os.path.getsize(temp_filename) < os.path.getsize(input_filename):
@@ -151,6 +152,16 @@ if __name__ == "__main__":
     all_input_files = glob.glob(os.path.join(args.input_directory, "**"), recursive=True)
     print(f"Processing {len(all_input_files)} input files...\n")
     summarize_directory_files(args, "input_directory", all_input_files)
+
+    # check for file name collisions since they could cause issues, and we do not explicitly handle them
+    collisions_detected = False
+    for fn, count in Counter([os.path.splitext(os.path.relpath(f, args.input_directory))[0]
+                              for f in all_input_files]).items():
+        if count > 1:
+            collisions_detected = True
+            print(f"Found multiple files ({count}) with the same name! {repr(fn)}")
+    if collisions_detected:
+        raise ValueError("File name collisions detected, which may cause issues when finalizing compressed output.")
 
     # actually run the mass compression routines
     compress_all_files(args, all_input_files)
