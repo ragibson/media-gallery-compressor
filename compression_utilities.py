@@ -101,13 +101,16 @@ def compress_video(input_filename, temp_filename, args):
     retain_video_metadata = ["-movflags", "use_metadata_tags", "-map_metadata", "0"]
 
     result = subprocess.run(  # completely deferring to ffmpeg subprocess here
-        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostats", "-i", input_filename, "-vcodec", args.video_codec]
-        + suppress_codec_logging + ["-crf", args.video_crf] + retain_video_metadata + [temp_filename]
+        ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-nostats",
+         "-i", input_filename, "-vcodec", args.video_codec, "-crf", args.video_crf]
+        + suppress_codec_logging + retain_video_metadata + [temp_filename], capture_output=True, text=True
     )
 
     # if ffmpeg failed, make sure that the output temp file does not exist
     if result.returncode:
         print(f"ffmpeg appears to have failed, skipping compression of {repr(input_filename)}")
+        print(result.stdout)
+        print(result.stderr)
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
 
