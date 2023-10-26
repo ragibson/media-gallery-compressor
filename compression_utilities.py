@@ -84,34 +84,42 @@ def correct_video_extension(temp_filename):
     return f"{os.path.splitext(temp_filename)[0]}.mp4"  # force mp4 container for libx265
 
 
-def compress_video(input_filename, temp_filename, args):
+def compress_video(input_filename, temp_filename, args, retry_count=3):
     """
     Run ffmpeg to compress an input video into the temp file with default settings of H.265 and CRF 24.
 
     We also try to suppress some codec-specific logging output for H.264 / H.265 and retain (most) video metadata.
     """
     temp_filename = correct_video_extension(temp_filename)
+    result = None
 
-    suppress_codec_logging = (  # suppress, e.g., "x265 [info]:" lines on stdout unless they're related to errors
-        ["-x265-params", "log-level=error"] if args.video_codec == "libx265"
-        else ["-x264-params", "log-level=error"] if args.video_codec == "libx264"
-        else []
-    )
-    # this retains most of the available metadata from the input videos
-    retain_video_metadata = ["-movflags", "use_metadata_tags", "-map_metadata", "0"]
+    for retry in range(retry_count):
+        suppress_codec_logging = (  # suppress, e.g., "x265 [info]:" lines on stdout unless they're related to errors
+            ["-x265-params", "log-level=error"] if args.video_codec == "libx265"
+            else ["-x264-params", "log-level=error"] if args.video_codec == "libx264"
+            else []
+        )
+        # this retains most of the available metadata from the input videos
+        retain_video_metadata = ["-movflags", "use_metadata_tags", "-map_metadata", "0"]
 
-    result = subprocess.run(  # completely deferring to ffmpeg subprocess here
-        ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-nostats",
-         "-i", input_filename, "-vcodec", args.video_codec, "-crf", args.video_crf]
-        + suppress_codec_logging + retain_video_metadata + [temp_filename], capture_output=True, text=True
-    )
+        result = subprocess.run(  # completely deferring to ffmpeg subprocess here
+            ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-nostats",
+             "-i", input_filename, "-vcodec", args.video_codec, "-crf", args.video_crf]
+            + suppress_codec_logging + retain_video_metadata + [temp_filename], capture_output=True, text=True
+        )
 
-    # if ffmpeg failed, make sure that the output temp file does not exist
-    if result.returncode:
-        print(f"ffmpeg appears to have failed, skipping compression of {repr(input_filename)}")
-        print(result.stdout)
-        print(result.stderr)
-        if os.path.exists(temp_filename):
+        if not result.returncode:
+            break
+        elif os.path.exists(temp_filename):
             os.remove(temp_filename)
+    else:
+        # if ffmpeg failed, make sure that the output temp file does not exist
+        if not result or result.returncode:
+            print(f"ffmpeg appears to have failed, skipping compression of {repr(input_filename)}")
+            if result:
+                print(result.stdout)
+                print(result.stderr)
+            if os.path.exists(temp_filename):
+                os.remove(temp_filename)
 
     return temp_filename
