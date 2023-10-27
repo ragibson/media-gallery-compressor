@@ -2,14 +2,22 @@
 
 Tool to compress the entire set of photos and videos in a directory (where beneficial).
 
+## Table of Contents
+
+* [Features](#features)
+* [Basic Usage](#basic-usage)
+* [Examples](#examples)
+* [Other usage options](#other-usage-options)
+* [Why?](#why)
+
 ## Features
 
 * Multithreaded compression typically achieves a throughput of a few GB of images per minute
-* Retains "visually lossless" images and photos with extremely high default quality settings
+* Retains "visually lossless" images and photos with extremely high default quality settings that typically achieve ~60%
+  compression
     * PNG: maximum compression level and extra processing pass to determine optimal encoder settings
     * JPEG: 95 quality, 4:4:4 subsampling, and extra processing pass to determine optimal encoder settings
     * Videos: H.265 encoding with CRF 24
-    * This typically achieves a ~50% overall size reduction
 * Downscales images based on the smaller dimension to support arbitrary aspect ratios
     * By default, keeps resolutions higher than a 4K equivalent
 * Corrects image file extensions that are incorrect in the source filesystem
@@ -45,11 +53,62 @@ options:
                         if needed (default: 2160)
 ```
 
-### Example (default settings)
+### Examples
+
+Using default settings,
 
 ```bash
 $ python3 compressor.py -i "media_to_compress" -o "media_after_compression"
-TODO
+Processing 8445 input files...
+
+input_directory summary (49.5 GB in total):
+input_directory -> Camera (48.7 GB in total):
+|  .jpg only: 28.8 GB
+|  .mp4 only: 19.5 GB
+|  .mov only: 168.9 MB
+|  .dng only: 99.9 MB
+|  .png only: 56.6 MB
+(Other subdirectories omitted for example)
+
+Compressing input files: 100%|█████████████████████████████| 8445/8445
+Output directory appears consistent with the input.
+
+output_directory summary (20.9 GB in total):
+output_directory -> Camera (20.4 GB in total):
+|  .jpg only: 14.9 GB
+|  .mp4 only: 5.3 GB
+|  .dng only: 99.9 MB
+|  .png only: 43.2 MB
+|  .mov only: 6.2 MB
+(Other subdirectories omitted for example)
+```
+
+Note that this represents an overall compression of ~60%. You can also get ~75% compression with the very high quality
+settings of 1440p resolution and video CRF 26.
+
+```bash
+$ python3 compressor.py -i "media_to_compress" -o "media_after_compression" -m 1440 --video-crf 26
+Processing 8445 input files...
+
+input_directory summary (49.5 GB in total):
+input_directory -> Camera (48.7 GB in total):
+| .jpg only: 28.8 GB
+| .mp4 only: 19.5 GB
+| .mov only: 168.9 MB
+| .dng only: 99.9 MB
+| .png only: 56.6 MB
+(Other subdirectories omitted for example)
+
+Compressing input files: 100%|█████████████████████████████| 8445/8445
+Output directory appears consistent with the input.
+
+output_directory summary (12.0 GB in total):
+output_directory -> Camera (11.5 GB in total):
+| .jpg only: 7.6 GB
+| .mp4 only: 3.9 GB
+| .dng only: 99.9 MB
+| .png only: 36.6 MB
+(Other subdirectories omitted for example)
 ```
 
 ### Other usage options
