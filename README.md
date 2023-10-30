@@ -6,8 +6,7 @@ Tool to compress the entire set of photos and videos in a directory (where benef
 
 * [Features](#features)
 * [Basic Usage](#basic-usage)
-* [Examples](#examples)
-* [Other usage options](#other-usage-options)
+* [Examples and other quality recommendations](#examples-and-other-quality-recommendations)
 * [Why?](#why)
 
 ## Features
@@ -24,6 +23,7 @@ Tool to compress the entire set of photos and videos in a directory (where benef
 * Retains most image and video metadata from the input as well as the files' modified and access times
 * Double checks that all files from the input were copied over to the output, explicitly tagging those that were
   compressed
+* Only depends on Pillow (for image compression), ffmpeg (for video compression), and tqdm (for displaying progress)
 
 ## Basic Usage
 
@@ -53,9 +53,39 @@ options:
                         if needed (default: 2160)
 ```
 
-### Examples
+There are a few more command line arguments that I would expect to be more rarely used.
 
-Using default settings,
+```
+  -d, --delete-existing
+                        If specified, will delete existing output and temp
+                        directories (default: False)
+  --jpeg-quality JPEG_QUALITY
+                        Quality setting for compressing JPEG images (default:
+                        95)
+  --jpeg-subsampling JPEG_SUBSAMPLING
+                        Subsampling setting for compressing JPEG images
+                        (default: 4:4:4)
+  --video-codec VIDEO_CODEC
+                        Codec for compressing videos with ffmpeg (default:
+                        libx265)
+  --video-crf VIDEO_CRF
+                        Constant rate factor for compressing videos with
+                        ffmpeg (default: 24)
+  --maximum-expected-compression MAXIMUM_EXPECTED_COMPRESSION
+                        Maximum compression percentage for sanity checks. An
+                        error will be raised if this threshold is ever
+                        exceeded after compressing a file. (default: 99)
+```
+
+### Examples and other quality recommendations
+
+Using default settings, we get an overall compression rate of ~60%.
+
+Some alternative "high-quality" settings would be using 1440p resolution, JPEG quality 90, and CRF 26. This achieves a
+compression rate of ~80%.
+
+Finally, a more "medium" quality setting of 1080p resolution, JPEG quality 85, JPEG 4:2:0 subsampling, and CRF 28
+yields a compression rate of ~90%.
 
 ```bash
 $ python3 compressor.py -i "media_to_compress" -o "media_after_compression"
@@ -81,60 +111,26 @@ output_directory -> Camera (20.4 GB in total):
 |  .png only: 43.2 MB
 |  .mov only: 6.2 MB
 (Other subdirectories omitted for example)
-```
 
-Note that this represents an overall compression of ~60%. You can also get ~75% compression with the very high quality
-settings of 1440p resolution and video CRF 26.
-
-```bash
-$ python3 compressor.py -i "media_to_compress" -o "media_after_compression" -m 1440 --video-crf 26
-Processing 8445 input files...
-
-input_directory summary (49.5 GB in total):
-input_directory -> Camera (48.7 GB in total):
-| .jpg only: 28.8 GB
-| .mp4 only: 19.5 GB
-| .mov only: 168.9 MB
-| .dng only: 99.9 MB
-| .png only: 56.6 MB
+$ python3 compressor.py -i "media_to_compress" -o "media_after_compression" -m 1440 --jpeg-quality 90 --video-crf 26
+(Input summary omitted for example)
+output_directory summary (9.6 GB in total):
+output_directory -> Camera (9.2 GB in total):
+|  .jpg only: 5.2 GB
+|  .mp4 only: 3.9 GB
+|  .dng only: 99.9 MB
+|  .png only: 36.6 MB
 (Other subdirectories omitted for example)
 
-Compressing input files: 100%|█████████████████████████████| 8445/8445
-Output directory appears consistent with the input.
-
-output_directory summary (12.0 GB in total):
-output_directory -> Camera (11.5 GB in total):
-| .jpg only: 7.6 GB
-| .mp4 only: 3.9 GB
-| .dng only: 99.9 MB
-| .png only: 36.6 MB
+$ python3 compressor.py -i "media_to_compress" -o "media_after_compression" -m 1080 --jpeg-quality 85 --jpeg-subsampling "4:2:0" --video-crf 28
+(Input summary omitted for example)
+output_directory summary (5.5 GB in total):
+output_directory -> Camera (5.3 GB in total):
+|  .mp4 only: 2.8 GB
+|  .jpg only: 2.3 GB
+|  .dng only: 99.9 MB
+|  .png only: 32.2 MB
 (Other subdirectories omitted for example)
-```
-
-### Other usage options
-
-There are a few more command line arguments that I would expect to be more rarely used.
-
-```
-  -d, --delete-existing
-                        If specified, will delete existing output and temp
-                        directories (default: False)
-  --jpeg-quality JPEG_QUALITY
-                        Quality setting for compressing JPEG images (default:
-                        95)
-  --jpeg-subsampling JPEG_SUBSAMPLING
-                        Subsampling setting for compressing JPEG images
-                        (default: 4:4:4)
-  --video-codec VIDEO_CODEC
-                        Codec for compressing videos with ffmpeg (default:
-                        libx265)
-  --video-crf VIDEO_CRF
-                        Constant rate factor for compressing videos with
-                        ffmpeg (default: 24)
-  --maximum-expected-compression MAXIMUM_EXPECTED_COMPRESSION
-                        Maximum compression percentage for sanity checks. An
-                        error will be raised if this threshold is ever
-                        exceeded after compressing a file. (default: 99)
 ```
 
 ## Why?
