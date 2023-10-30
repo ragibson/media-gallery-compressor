@@ -44,7 +44,11 @@ def choose_compression_or_original_file(input_filename, temp_filename, output_fi
             os.remove(temp_filename)  # the original file is smaller, so no need for the compressed version
         shutil.copyfile(input_filename, output_filename)
 
-    # retain modify/access times from the input files
+    copy_modify_access_times(input_filename, output_filename)
+
+
+def copy_modify_access_times(input_filename, output_filename):
+    """Copy the modify/access times from the input file to the output file."""
     st = os.stat(input_filename)
     os.utime(output_filename, (st.st_atime, st.st_mtime))
 
@@ -71,6 +75,7 @@ def compress_single_file(bundled_imap_args):
         # do not attempt compression, just copy this file over to the output and return
         print(f"Unimplemented file extension: {os.path.relpath(input_filename, args.input_directory)}")
         shutil.copyfile(input_filename, output_filename)
+        copy_modify_access_times(input_filename, output_filename)
         return
 
     if claimed_file_extension in IMPLEMENTED_IMAGE_FORMATS:
