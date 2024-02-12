@@ -2,7 +2,8 @@
 from collections import Counter
 from cli_utilities import parse_arguments, validate_arguments
 from compression_utilities import compress_image, compress_video
-from file_utilities import prepare_directories, summarize_directory_files, lowercase_file_extension
+from file_utilities import (prepare_directories, summarize_directory_files,
+                            lowercase_file_extension, relative_canonical_name)
 from multiprocessing import Pool
 from tqdm import tqdm
 import glob
@@ -105,25 +106,18 @@ def verify_compression_consistency(args, all_input_files, all_output_files):
         (ii) ensure that all the names of the files match
         (iii) ensure that the compression rate is never too high
     """
-
-    def relative_canonical_name(filepath, start, check_suffix=False):
-        relname = os.path.splitext(os.path.relpath(filepath, start))[0]
-        if check_suffix and relname.endswith(args.suffix):
-            relname = relname[:-len(args.suffix)]
-        return relname
-
     if len(all_input_files) != len(all_output_files):
         raise RuntimeError("The final count of output files did not match the input!")
 
     all_input_files.sort(key=lambda f: relative_canonical_name(f, args.input_directory))
-    all_output_files.sort(key=lambda f: relative_canonical_name(f, args.output_directory, check_suffix=True))
+    all_output_files.sort(key=lambda f: relative_canonical_name(f, args.output_directory, suffix=args.suffix))
 
     for idx, (input_filepath, output_filepath) in enumerate(zip(all_input_files, all_output_files)):
         if not os.path.isfile(input_filepath) and not os.path.isfile(output_filepath):
             continue
 
         input_name = repr(relative_canonical_name(input_filepath, args.input_directory))
-        output_name = repr(relative_canonical_name(output_filepath, args.output_directory, check_suffix=True))
+        output_name = repr(relative_canonical_name(output_filepath, args.output_directory, suffix=args.suffix))
         if input_name != output_name:
             raise RuntimeError(f"In final consistency check, file #{idx} did not match: {input_name} vs. {output_name}")
 
@@ -160,7 +154,7 @@ if __name__ == "__main__":
 
     # check for file name collisions since they could cause issues, and we do not explicitly handle them
     collisions_detected = False
-    for fn, count in Counter([os.path.splitext(os.path.relpath(f, args.input_directory))[0]
+    for fn, count in Counter([relative_canonical_name(f, args.input_directory, args.suffix)
                               for f in all_input_files]).items():
         if count > 1:
             collisions_detected = True

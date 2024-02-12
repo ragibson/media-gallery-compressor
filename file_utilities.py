@@ -29,6 +29,14 @@ def lowercase_file_extension(filename):
     return os.path.splitext(filename)[-1].lower()
 
 
+def relative_canonical_name(filepath, start, suffix=""):
+    """Return name of file with the starting prefix (and optionally the suffix) removed."""
+    relative_name = os.path.splitext(os.path.relpath(filepath, start))[0]
+    if suffix and relative_name.endswith(suffix):
+        relative_name = relative_name[:-len(suffix)]
+    return relative_name
+
+
 def prepare_directories(args):
     """
     Copy the directory structure (no files) of the input media files over to the output and temp directories.
