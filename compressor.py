@@ -160,7 +160,8 @@ if __name__ == "__main__":
             collisions_detected = True
             print(f"Found multiple files ({count}) with the same name! {repr(fn)}")
     if collisions_detected:
-        raise ValueError("File name collisions detected, which may cause issues when finalizing compressed output.")
+        raise ValueError("File name collisions detected, which may cause issues when finalizing compressed output. "
+                         "Note that this ignores file extensions since they could change during compression!")
 
     # actually run the mass compression routines
     compress_all_files(args, all_input_files)
