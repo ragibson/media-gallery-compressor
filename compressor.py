@@ -91,7 +91,7 @@ def compress_single_file(bundled_imap_args):
 
 def compress_all_files(args, all_input_files):
     """Run parallel compression of all input media files."""
-    with Pool() as pool:
+    with Pool(processes=args.processes) as pool:
         pool_args = [(fn, args) for fn in all_input_files]
         list(tqdm(pool.imap_unordered(compress_single_file, pool_args), total=len(pool_args),
                   desc="Compressing input files"))

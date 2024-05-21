@@ -1,4 +1,5 @@
 """This file handles details related to the command line interface of the media compressor."""
+from multiprocessing import cpu_count
 import argparse
 import os
 import shutil
@@ -23,6 +24,9 @@ def parse_arguments():
                         default=DEFAULT_COMPRESSED_FILENAME_TAG)
     parser.add_argument("-m", "--minimum-image-dimension", default=2160, type=int,
                         help="Resolution to reduce the smaller image dimension to, if needed")
+    parser.add_argument("-p", "--processes", default=cpu_count(), type=int,
+                        help="Maximum number of compression processes to run in parallel. "
+                             "Defaults to the number of CPUs in the system.")
     parser.add_argument("--jpeg-quality", default=95, type=int, help="Quality setting for compressing JPEG images")
     parser.add_argument("--jpeg-subsampling", default="4:4:4", help="Subsampling setting for compressing JPEG images")
     parser.add_argument("--video-codec", default="libx265", help="Codec for compressing videos with ffmpeg")

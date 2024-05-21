@@ -102,6 +102,8 @@ def compress_video(input_filename, temp_filename, args, retry_count=3):
         # this retains most of the available metadata from the input videos
         retain_video_metadata = ["-movflags", "use_metadata_tags", "-map_metadata", "0"]
 
+        # you could theoretically use -threads 1 here to suppress multithreading. It is needed twice, once after ffmpeg
+        # for the global decoding options, and once before the output filename for the final encoding options
         result = subprocess.run(  # completely deferring to ffmpeg subprocess here
             ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-nostats",
              "-i", input_filename, "-vcodec", args.video_codec, "-crf", args.video_crf]
