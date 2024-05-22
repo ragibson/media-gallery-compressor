@@ -52,7 +52,9 @@ options:
                         Resolution to reduce the smaller image dimension to,
                         if needed (default: 2160)
   -p PROCESSES, --processes PROCESSES
-                        Maximum number of compression processes to run in parallel. Defaults to the number of CPUs in the system. (default: 8)
+                        Maximum number of compression processes to run in
+                        parallel. Defaults to the number of CPUs in the
+                        system. (default: 8)
 ```
 
 There are a few more command line arguments that I would expect to be more rarely used.
